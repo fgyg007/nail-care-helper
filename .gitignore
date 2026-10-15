@@ -1,0 +1,11 @@
+node_modules/
+www/
+.DS_Store
+*.keystore
+*.jks
+.env*
+artifacts/
+test-results/
+playwright-report/
+*.p12
+*.pem

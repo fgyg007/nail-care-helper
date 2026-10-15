@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">护甲上岸助手</string>
+    <string name="title_activity_main">护甲上岸助手</string>
+    <string name="package_name">com.jilei.nailcare</string>
+    <string name="custom_url_scheme">com.jilei.nailcare</string>
+</resources>

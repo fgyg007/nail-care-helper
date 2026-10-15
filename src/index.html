@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="护甲打卡" />
+  <title>灰指甲康复打卡助手 Pro</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="./native.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #e2e8f0;
+      -webkit-tap-highlight-color: transparent;
+      margin: 0;
+    }
+    .phone-container {
+      max-width: 430px;
+      margin: 0 auto;
+      background-color: #f4f7f6;
+      min-height: 100vh;
+      padding-bottom: 96px;
+      position: relative;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+    }
+    .check-card:active { transform: scale(0.99); }
+    .safe-bottom { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+    header { padding-top: calc(1.5rem + env(safe-area-inset-top)) !important; }
+    .digit-node { transition: all 0.2s ease; cursor: pointer; }
+    .digit-node:active { transform: scale(0.92); }
+  </style>
+</head>
+<body class="text-slate-800">
+
+<div class="phone-container">
+  <!-- 顶部状态栏 -->
+  <header class="bg-teal-600 text-white pt-6 pb-8 px-5 rounded-b-3xl shadow-md">
+    <div class="flex justify-between items-center mb-4">
+      <div>
+        <h1 class="text-xl font-bold tracking-wide flex items-center gap-1.5">
+          <span>✨ 护甲上岸助手</span>
+          <span class="text-[11px] font-semibold bg-amber-400 text-slate-900 px-2 py-0.5 rounded-full">全图解Pro</span>
+        </h1>
+        <p id="currentDateStr" class="text-teal-100 text-xs mt-0.5"></p>
+      </div>
+      <button onclick="openReminderModal()" class="bg-white/20 hover:bg-white/30 text-white text-xs px-3 py-2 rounded-full backdrop-blur-sm flex items-center gap-1 font-medium">
+        🔔 手机强提醒
+      </button>
+    </div>
+
+    <!-- 核心数据看板 -->
+    <div class="grid grid-cols-4 gap-2 bg-teal-700/50 p-3 rounded-2xl backdrop-blur-sm">
+      <div class="text-center">
+        <div id="statNails" class="text-xl font-extrabold text-amber-300">0</div>
+        <div class="text-[10px] text-teal-100">重点病甲(个)</div>
+      </div>
+      <div class="text-center border-l border-teal-500/40">
+        <div id="statDays" class="text-xl font-extrabold">0</div>
+        <div class="text-[10px] text-teal-100">累计打卡(天)</div>
+      </div>
+      <div class="text-center border-x border-teal-500/40">
+        <div id="statAmorolfine" class="text-xl font-extrabold">0</div>
+        <div class="text-[10px] text-teal-100">阿莫罗芬(次)</div>
+      </div>
+      <div class="text-center">
+        <div id="statPhotos" class="text-xl font-extrabold">0</div>
+        <div class="text-[10px] text-teal-100">病甲影像(张)</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="px-3.5 -mt-4">
+
+    <!-- ================= Tab 1: 今日打卡 ================= -->
+    <section id="tab-today" class="space-y-4">
+
+      <!-- 1. 手动进度阶段尺 + 周期进度条 -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-3">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold text-slate-700">🎯 当前康复阶段自评（点击手动对标）</span>
+          <span id="cyclePercent" class="text-[11px] text-teal-600 font-bold">打卡 0/180天</span>
+        </div>
+
+        <!-- 4阶段手动切换器 -->
+        <div class="grid grid-cols-4 gap-1.5 text-center" id="stageSelector">
+          <button onclick="setStage(1)" id="stage-btn-1" class="p-2 rounded-xl border text-[11px] transition-all">
+            <div class="font-bold">阶段1:破冰</div>
+            <div class="text-[9px] opacity-80">第1~4周</div>
+          </button>
+          <button onclick="setStage(2)" id="stage-btn-2" class="p-2 rounded-xl border text-[11px] transition-all">
+            <div class="font-bold">阶段2:推进</div>
+            <div class="text-[9px] opacity-80">第2~3月</div>
+          </button>
+          <button onclick="setStage(3)" id="stage-btn-3" class="p-2 rounded-xl border text-[11px] transition-all">
+            <div class="font-bold">阶段3:大半</div>
+            <div class="text-[9px] opacity-80">第4~5月</div>
+          </button>
+          <button onclick="setStage(4)" id="stage-btn-4" class="p-2 rounded-xl border text-[11px] transition-all">
+            <div class="font-bold">阶段4:上岸</div>
+            <div class="text-[9px] opacity-80">6个月+</div>
+          </button>
+        </div>
+
+        <!-- 当前阶段图文对照卡 -->
+        <div id="stageDetailCard" class="bg-teal-50/70 border border-teal-100 p-3 rounded-xl flex items-center gap-3">
+          <div id="stageSvgBox" class="w-14 h-16 shrink-0 flex items-center justify-center"></div>
+          <div class="text-xs space-y-1">
+            <div id="stageTitle" class="font-bold text-teal-900"></div>
+            <div id="stageDesc" class="text-[11px] text-slate-600 leading-relaxed"></div>
+          </div>
+        </div>
+
+        <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+          <div id="cycleBar" class="bg-gradient-to-r from-teal-400 to-emerald-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- 2. 每周深度护理模块：泡脚+清创+阿莫罗芬 -->
+      <div id="amorolfineBox" class="bg-amber-50 border border-amber-200 p-4 rounded-2xl shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <span class="bg-amber-500 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full">每周 2 次 · 核心破甲</span>
+          <span id="amorolfineBadge" class="text-xs font-semibold text-amber-700">推荐周三 / 周日晚操作</span>
+        </div>
+        <div class="flex justify-between items-center mb-2">
+          <h2 class="font-bold text-slate-800 text-base">🛠️ 泡脚软化 + 挫薄 + 阿莫罗芬</h2>
+          <button onclick="document.getElementById('stepPicsCarousel').classList.toggle('hidden')" class="text-[11px] text-amber-700 underline font-medium">展开/收起图解</button>
+        </div>
+
+        <!-- 4步操作分解示意图 -->
+        <div id="stepPicsCarousel" class="grid grid-cols-2 gap-2 mb-3">
+          <div class="bg-white p-2.5 rounded-xl border border-amber-100 flex flex-col items-center text-center">
+            <svg class="w-16 h-14 mb-1" viewBox="0 0 100 80" fill="none">
+              <path d="M15 45 C15 68, 85 68, 85 45 Z" fill="#BAE6FD" stroke="#0284C7" stroke-width="2.5"/>
+              <path d="M10 45 L90 45" stroke="#0284C7" stroke-width="3" stroke-linecap="round"/>
+              <path d="M35 35 Q40 25 35 15 M50 35 Q55 25 50 15 M65 35 Q70 25 65 15" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round"/>
+              <text x="50" y="59" font-size="9" fill="#0369A1" text-anchor="middle" font-weight="bold">40℃泡15分钟</text>
+            </svg>
+            <div class="text-xs font-bold text-slate-800">① 泡脚把甲泡软</div>
+            <div class="text-[10px] text-slate-500 leading-tight mt-0.5">40℃温水泡10~15分钟（无破皮前3天可用足光散），软化硬甲后彻底擦干</div>
+          </div>
+
+          <div class="bg-white p-2.5 rounded-xl border border-amber-100 flex flex-col items-center text-center">
+            <svg class="w-16 h-14 mb-1" viewBox="0 0 100 80" fill="none">
+              <rect x="20" y="45" width="60" height="20" rx="8" fill="#FDE68A" stroke="#D97706" stroke-width="2"/>
+              <path d="M25 45 L75 45 L75 34 L25 41 Z" fill="#F59E0B" opacity="0.5"/>
+              <rect x="15" y="20" width="70" height="10" rx="4" transform="rotate(-8 50 25)" fill="#64748B" stroke="#334155" stroke-width="2"/>
+              <text x="50" y="60" font-size="9" fill="#92400E" text-anchor="middle" font-weight="bold">剪空+挫薄</text>
+            </svg>
+            <div class="text-xs font-bold text-slate-800">② 剪空并挫薄病甲</div>
+            <div class="text-[10px] text-slate-500 leading-tight mt-0.5">专用斜口钳剪去中空黄甲，一次性砂条狠挫薄至磨砂面，砂条即扔</div>
+          </div>
+
+          <div class="bg-white p-2.5 rounded-xl border border-amber-100 flex flex-col items-center text-center">
+            <svg class="w-16 h-14 mb-1" viewBox="0 0 100 80" fill="none">
+              <rect x="28" y="30" width="44" height="38" rx="12" fill="#FECDD3" stroke="#E11D48" stroke-width="2"/>
+              <rect x="38" y="15" width="36" height="28" rx="4" transform="rotate(12 50 25)" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+              <text x="54" y="34" font-size="9" fill="#0369A1" text-anchor="middle" font-weight="bold">75%酒精</text>
+            </svg>
+            <div class="text-xs font-bold text-slate-800">③ 酒精擦洗脱脂</div>
+            <div class="text-[10px] text-slate-500 leading-tight mt-0.5">酒精棉片用力擦除甲面粉尘和上周残留旧药膜，同时擦拭消毒指甲刀</div>
+          </div>
+
+          <div class="bg-white p-2.5 rounded-xl border border-amber-100 flex flex-col items-center text-center">
+            <svg class="w-16 h-14 mb-1" viewBox="0 0 100 80" fill="none">
+              <rect x="28" y="32" width="44" height="36" rx="12" fill="#CCFBF1" stroke="#0D9488" stroke-width="2.5"/>
+              <line x1="50" y1="8" x2="50" y2="26" stroke="#0F766E" stroke-width="4" stroke-linecap="round"/>
+              <circle cx="50" cy="30" r="5" fill="#14B8A6"/>
+              <text x="50" y="55" font-size="9" fill="#0F766E" text-anchor="middle" font-weight="bold">静置3分钟成膜</text>
+            </svg>
+            <div class="text-xs font-bold text-slate-800">④ 涂满阿莫罗芬</div>
+            <div class="text-[10px] text-slate-500 leading-tight mt-0.5">药铲涂满病甲及前端空隙，静置3分钟干透形成防水膜，管3~4天</div>
+          </div>
+        </div>
+
+        <label class="check-card flex items-center justify-between bg-white p-3.5 rounded-xl border border-amber-300 cursor-pointer shadow-sm">
+          <div class="flex items-center gap-3">
+            <input type="checkbox" id="chk-amorolfine" onchange="toggleTask('amorolfine')" class="w-5 h-5 accent-teal-600 rounded" />
+            <span class="font-semibold text-sm text-slate-800">今日已完成【泡脚挫甲 + 涂阿莫罗芬】</span>
+          </div>
+          <span class="text-xs text-amber-600 font-bold">甲板专用</span>
+        </label>
+      </div>
+
+      <!-- 3. 每日必做护理模块（带三药分区图解） -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-3">
+        <div class="flex justify-between items-center">
+          <h2 class="font-bold text-slate-800 text-base">🧴 每日周边防线（早晚必做）</h2>
+          <span class="text-xs text-rose-500 font-bold">⚠️ 药膏绝不碰甲板</span>
+        </div>
+
+        <!-- 直观涂药部位分区示意图 -->
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center gap-3">
+          <svg class="w-24 h-24 shrink-0" viewBox="0 0 120 120" fill="none">
+            <path d="M25 110 L25 50 C25 20, 95 20, 95 50 L95 110 Z" fill="#FFE4E6" stroke="#F43F5E" stroke-width="2"/>
+            <path d="M30 95 L30 50 C30 27, 90 27, 90 50 L90 95" stroke="#10B981" stroke-width="7" stroke-linecap="round" stroke-dasharray="6 3"/>
+            <rect x="38" y="38" width="44" height="42" rx="12" fill="#FEF3C7" stroke="#D97706" stroke-width="2.5"/>
+            <path d="M42 74 Q60 66 78 74" fill="#FCA5A5"/>
+            <text x="60" y="58" font-size="9" fill="#B45309" text-anchor="middle" font-weight="bold">甲面:阿莫罗芬</text>
+            <text x="60" y="69" font-size="8" fill="#DC2626" text-anchor="middle">(禁沾油膏!)</text>
+            <text x="60" y="105" font-size="9" fill="#047857" text-anchor="middle" font-weight="bold">绿圈肉:涂咪康唑</text>
+          </svg>
+          <div class="text-xs space-y-1.5 text-slate-600 leading-relaxed">
+            <div><strong class="text-amber-700">🟡 黄区（指甲盖）：</strong>每周2次阿莫罗芬，平时禁涂软膏防溶膜。</div>
+            <div><strong class="text-emerald-700">🟢 绿圈（甲沟肉+趾缝）：</strong>每天早晚涂<strong>硝酸咪康唑</strong>杀灭脚气真菌。</div>
+            <div><strong class="text-sky-700">🔵 脚后跟/足底厚皮：</strong>睡前隔15分钟厚涂<strong>尿素维E软膏</strong>防裂。</div>
+          </div>
+        </div>
+
+        <label class="check-card flex items-center justify-between bg-slate-50 p-3.5 rounded-xl border border-slate-200/70 cursor-pointer">
+          <div class="flex items-center gap-3">
+            <input type="checkbox" id="chk-miconazole-am" onchange="toggleTask('miconazole_am')" class="w-5 h-5 accent-teal-600 rounded" />
+            <div>
+              <div class="font-semibold text-sm text-slate-800">☀️ 早晨：涂硝酸咪康唑乳膏</div>
+              <div class="text-[11px] text-slate-500">涂绿圈区域（趾缝、甲周皮肤），斩断传染源</div>
+            </div>
+          </div>
+        </label>
+
+        <label class="check-card flex items-center justify-between bg-slate-50 p-3.5 rounded-xl border border-slate-200/70 cursor-pointer">
+          <div class="flex items-center gap-3">
+            <input type="checkbox" id="chk-miconazole-pm" onchange="toggleTask('miconazole_pm')" class="w-5 h-5 accent-teal-600 rounded" />
+            <div>
+              <div class="font-semibold text-sm text-slate-800">🌙 晚间：泡脚吹干 + 涂硝酸咪康唑</div>
+              <div class="text-[11px] text-slate-500">纸巾或吹风机彻底吹干趾缝水分后再涂肉上</div>
+            </div>
+          </div>
+        </label>
+
+        <label class="check-card flex items-center justify-between bg-slate-50 p-3.5 rounded-xl border border-slate-200/70 cursor-pointer">
+          <div class="flex items-center gap-3">
+            <input type="checkbox" id="chk-urea-pm" onchange="toggleTask('urea_pm')" class="w-5 h-5 accent-teal-600 rounded" />
+            <div>
+              <div class="font-semibold text-sm text-slate-800">💧 睡前：涂尿素维E软膏</div>
+              <div class="text-[11px] text-slate-500">涂完咪康唑15分钟后，厚涂脚后跟与足底干燥处</div>
+            </div>
+          </div>
+        </label>
+      </div>
+
+      <!-- 4. 拍照打卡（支持绑定具体手指/脚趾） -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-2.5">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="font-bold text-slate-800 text-base">📸 拍摄今日病甲状况</h2>
+            <p class="text-xs text-slate-500">选择部位后垂直微距拍摄，追踪月牙新甲推进线</p>
+          </div>
+          <div class="flex gap-1 shrink-0">
+            <button onclick="pickPhoto('camera')" class="bg-teal-600 text-white text-xs font-bold px-3 py-2.5 rounded-xl">📷 拍照</button>
+            <button onclick="pickPhoto('gallery')" class="bg-teal-100 text-teal-800 text-xs font-bold px-3 py-2.5 rounded-xl">选图</button>
+            <input id="photoFile" type="file" accept="image/*" onchange="handlePhotoUpload(event)" class="hidden" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <select id="photoDigitSelect" class="col-span-1 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 font-semibold text-teal-800 focus:outline-none">
+            <option value="未指定部位">📍全部部位</option>
+          </select>
+          <input type="text" id="photoNote" placeholder="备注（如：根部露出2mm健康新甲）"
+                 class="col-span-2 text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-teal-500" />
+        </div>
+
+        <div id="todayPhotosContainer" class="grid grid-cols-3 gap-2 pt-1"></div>
+      </div>
+
+    </section>
+
+    <!-- ================= Tab 2: 病甲定位与严重度图谱 ================= -->
+    <section id="tab-map" class="hidden space-y-4">
+
+      <!-- 交互式手足20指（趾）定位图 -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <div class="flex justify-between items-center mb-1">
+          <h2 class="font-bold text-slate-800 text-base">🦶🤚 我的病甲部位与严重度档案</h2>
+          <div class="flex bg-slate-100 p-0.5 rounded-lg text-xs">
+            <button onclick="switchBodyPart('feet')" id="btn-part-feet" class="px-2.5 py-1 rounded-md bg-teal-600 text-white font-bold">双脚趾甲</button>
+            <button onclick="switchBodyPart('hands')" id="btn-part-hands" class="px-2.5 py-1 rounded-md text-slate-600 font-medium">双手手指</button>
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-500 mb-3">
+          💡 <strong>直接点击下方图形中的指/趾甲</strong>，每点一次切换状态：
+          <span class="inline-block px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded font-bold">健康</span> →
+          <span class="inline-block px-1.5 py-0.2 bg-amber-200 text-amber-900 rounded font-bold">轻度</span> →
+          <span class="inline-block px-1.5 py-0.2 bg-orange-300 text-orange-950 rounded font-bold">中度</span> →
+          <span class="inline-block px-1.5 py-0.2 bg-rose-500 text-white rounded font-bold">重度</span>
+        </p>
+
+        <!-- 双脚 SVG 交互图 -->
+        <div id="svg-feet-box" class="bg-slate-50 rounded-2xl p-3 border border-slate-200">
+          <svg class="w-full h-52" viewBox="0 0 320 190" fill="none">
+            <!-- 左脚掌轮廓 -->
+            <path d="M40 180 C25 140 25 90 35 65 C45 45 125 45 130 75 C135 110 125 150 115 180 Z" fill="#FFE4E6" stroke="#FDA4AF" stroke-width="2"/>
+            <text x="80" y="135" font-size="12" fill="#BE123C" text-anchor="middle" font-weight="bold">左脚 (Left)</text>
+            <text x="80" y="152" font-size="9" fill="#E11D48" text-anchor="middle">周期: 6~12个月</text>
+            <!-- 左脚5个趾甲 (小趾 -> 大拇趾) -->
+            <g id="node-LF5" onclick="cycleDigitState('LF5')" class="digit-node"><rect x="26" y="42" width="14" height="18" rx="6" stroke-width="2"/><text x="33" y="37" font-size="8" fill="#475569" text-anchor="middle">小</text></g>
+            <g id="node-LF4" onclick="cycleDigitState('LF4')" class="digit-node"><rect x="44" y="32" width="16" height="20" rx="6" stroke-width="2"/><text x="52" y="27" font-size="8" fill="#475569" text-anchor="middle">四</text></g>
+            <g id="node-LF3" onclick="cycleDigitState('LF3')" class="digit-node"><rect x="64" y="26" width="17" height="22" rx="7" stroke-width="2"/><text x="72" y="21" font-size="8" fill="#475569" text-anchor="middle">中</text></g>
+            <g id="node-LF2" onclick="cycleDigitState('LF2')" class="digit-node"><rect x="85" y="23" width="19" height="24" rx="7" stroke-width="2"/><text x="94" y="18" font-size="8" fill="#475569" text-anchor="middle">二</text></g>
+            <g id="node-LF1" onclick="cycleDigitState('LF1')" class="digit-node"><rect x="108" y="24" width="26" height="30" rx="9" stroke-width="2.5"/><text x="121" y="18" font-size="9" fill="#0F172A" font-weight="bold" text-anchor="middle">左大拇趾</text></g>
+
+            <!-- 右脚掌轮廓 -->
+            <path d="M280 180 C295 140 295 90 285 65 C275 45 195 45 190 75 C185 110 195 150 205 180 Z" fill="#FFE4E6" stroke="#FDA4AF" stroke-width="2"/>
+            <text x="240" y="135" font-size="12" fill="#BE123C" text-anchor="middle" font-weight="bold">右脚 (Right)</text>
+            <text x="240" y="152" font-size="9" fill="#E11D48" text-anchor="middle">大拇趾最高发</text>
+            <!-- 右脚5个趾甲 (大拇趾 -> 小趾) -->
+            <g id="node-RF1" onclick="cycleDigitState('RF1')" class="digit-node"><rect x="186" y="24" width="26" height="30" rx="9" stroke-width="2.5"/><text x="199" y="18" font-size="9" fill="#0F172A" font-weight="bold" text-anchor="middle">右大拇趾</text></g>
+            <g id="node-RF2" onclick="cycleDigitState('RF2')" class="digit-node"><rect x="216" y="23" width="19" height="24" rx="7" stroke-width="2"/><text x="225" y="18" font-size="8" fill="#475569" text-anchor="middle">二</text></g>
+            <g id="node-RF3" onclick="cycleDigitState('RF3')" class="digit-node"><rect x="239" y="26" width="17" height="22" rx="7" stroke-width="2"/><text x="247" y="21" font-size="8" fill="#475569" text-anchor="middle">中</text></g>
+            <g id="node-RF4" onclick="cycleDigitState('RF4')" class="digit-node"><rect x="260" y="32" width="16" height="20" rx="6" stroke-width="2"/><text x="268" y="27" font-size="8" fill="#475569" text-anchor="middle">四</text></g>
+            <g id="node-RF5" onclick="cycleDigitState('RF5')" class="digit-node"><rect x="280" y="42" width="14" height="18" rx="6" stroke-width="2"/><text x="287" y="37" font-size="8" fill="#475569" text-anchor="middle">小</text></g>
+          </svg>
+        </div>
+
+        <!-- 双手 SVG 交互图 -->
+        <div id="svg-hands-box" class="hidden bg-slate-50 rounded-2xl p-3 border border-slate-200">
+          <svg class="w-full h-52" viewBox="0 0 320 190" fill="none">
+            <!-- 左手轮廓 -->
+            <rect x="30" y="75" width="95" height="100" rx="25" fill="#FFE4E6" stroke="#FDA4AF" stroke-width="2"/>
+            <text x="77" y="130" font-size="12" fill="#BE123C" text-anchor="middle" font-weight="bold">左手 (Left)</text>
+            <text x="77" y="147" font-size="9" fill="#E11D48" text-anchor="middle">周期: 3~6个月</text>
+            <g id="node-LH5" onclick="cycleDigitState('LH5')" class="digit-node"><rect x="24" y="42" width="15" height="24" rx="7" stroke-width="2"/><text x="31" y="36" font-size="8" fill="#475569" text-anchor="middle">小</text></g>
+            <g id="node-LH4" onclick="cycleDigitState('LH4')" class="digit-node"><rect x="44" y="26" width="16" height="28" rx="7" stroke-width="2"/><text x="52" y="20" font-size="8" fill="#475569" text-anchor="middle">无名</text></g>
+            <g id="node-LH3" onclick="cycleDigitState('LH3')" class="digit-node"><rect x="65" y="18" width="17" height="30" rx="8" stroke-width="2"/><text x="73" y="13" font-size="8" fill="#475569" text-anchor="middle">中</text></g>
+            <g id="node-LH2" onclick="cycleDigitState('LH2')" class="digit-node"><rect x="87" y="26" width="16" height="28" rx="7" stroke-width="2"/><text x="95" y="20" font-size="8" fill="#475569" text-anchor="middle">食</text></g>
+            <g id="node-LH1" onclick="cycleDigitState('LH1')" class="digit-node"><rect x="112" y="55" width="22" height="26" rx="8" stroke-width="2"/><text x="123" y="49" font-size="8" fill="#0F172A" font-weight="bold" text-anchor="middle">左拇指</text></g>
+
+            <!-- 右手轮廓 -->
+            <rect x="195" y="75" width="95" height="100" rx="25" fill="#FFE4E6" stroke="#FDA4AF" stroke-width="2"/>
+            <text x="242" y="130" font-size="12" fill="#BE123C" text-anchor="middle" font-weight="bold">右手 (Right)</text>
+            <text x="242" y="147" font-size="9" fill="#E11D48" text-anchor="middle">生长比脚趾快一倍</text>
+            <g id="node-RH1" onclick="cycleDigitState('RH1')" class="digit-node"><rect x="186" y="55" width="22" height="26" rx="8" stroke-width="2"/><text x="197" y="49" font-size="8" fill="#0F172A" font-weight="bold" text-anchor="middle">右拇指</text></g>
+            <g id="node-RH2" onclick="cycleDigitState('RH2')" class="digit-node"><rect x="217" y="26" width="16" height="28" rx="7" stroke-width="2"/><text x="225" y="20" font-size="8" fill="#475569" text-anchor="middle">食</text></g>
+            <g id="node-RH3" onclick="cycleDigitState('RH3')" class="digit-node"><rect x="238" y="18" width="17" height="30" rx="8" stroke-width="2"/><text x="246" y="13" font-size="8" fill="#475569" text-anchor="middle">中</text></g>
+            <g id="node-RH4" onclick="cycleDigitState('RH4')" class="digit-node"><rect x="260" y="26" width="16" height="28" rx="7" stroke-width="2"/><text x="268" y="20" font-size="8" fill="#475569" text-anchor="middle">无名</text></g>
+            <g id="node-RH5" onclick="cycleDigitState('RH5')" class="digit-node"><rect x="281" y="42" width="15" height="24" rx="7" stroke-width="2"/><text x="288" y="36" font-size="8" fill="#475569" text-anchor="middle">小</text></g>
+          </svg>
+        </div>
+
+        <!-- 已标记的病甲列表与定制建议 -->
+        <div id="markedNailsSummary" class="mt-3 space-y-2"></div>
+      </div>
+
+      <!-- 轻/中/重度 图解对照手册 -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-3">
+        <h2 class="font-bold text-slate-800 text-base">🔎 哪些算轻微？哪些算严重？（看图自查）</h2>
+
+        <!-- 轻度卡 -->
+        <div class="flex gap-3 bg-amber-50/70 p-3 rounded-xl border border-amber-200 items-center">
+          <svg class="w-16 h-20 shrink-0" viewBox="0 0 60 75">
+            <rect x="8" y="8" width="44" height="58" rx="12" fill="#FECDD3" stroke="#E11D48" stroke-width="2"/>
+            <path d="M18 56 Q30 48 42 56" fill="#FFF" opacity="0.8"/>
+            <!-- 前端小于1/4黄斑 -->
+            <path d="M8 20 C8 10 52 10 52 20 L52 24 Q30 28 8 22 Z" fill="#FDE047" stroke="#CA8A04" stroke-width="1.5"/>
+            <circle cx="22" cy="30" r="3.5" fill="#FEF08A"/>
+          </svg>
+          <div class="text-xs space-y-1">
+            <div class="font-bold text-amber-900">🟡 轻度感染（受累面积 ≤25%，未及月牙）</div>
+            <div class="text-[11px] text-slate-600 leading-relaxed">
+              <strong>视觉特征：</strong>仅指/趾甲前端边缘或侧缘有小块发黄、发白斑点，甲根（月牙）完全健康。<br/>
+              <strong>核心方案：</strong>单靠<strong>每周2次挫薄+涂阿莫罗芬</strong>即可稳稳治愈，无需吃药。
+            </div>
+          </div>
+        </div>
+
+        <!-- 中度卡 -->
+        <div class="flex gap-3 bg-orange-50/80 p-3 rounded-xl border border-orange-200 items-center">
+          <svg class="w-16 h-20 shrink-0" viewBox="0 0 60 75">
+            <rect x="8" y="8" width="44" height="58" rx="12" fill="#FECDD3" stroke="#EA580C" stroke-width="2"/>
+            <!-- 2/3变黄增厚分层 -->
+            <path d="M8 20 C8 8 52 8 52 20 L52 46 Q30 50 8 44 Z" fill="#FACC15" stroke="#B45309" stroke-width="2"/>
+            <line x1="14" y1="22" x2="46" y2="25" stroke="#92400E" stroke-width="1.5" stroke-dasharray="3 2"/>
+            <line x1="14" y1="34" x2="44" y2="36" stroke="#92400E" stroke-width="1.5" stroke-dasharray="3 2"/>
+          </svg>
+          <div class="text-xs space-y-1">
+            <div class="font-bold text-orange-950">🟠 中度感染（受累 25%~75%，增厚中空）</div>
+            <div class="text-[11px] text-slate-600 leading-relaxed">
+              <strong>视觉特征：</strong>大半片指甲变黄浑浊、明显增厚、底下掏空成碎屑，但最根部月牙还剩一线健康。<br/>
+              <strong>核心方案：</strong>必须<strong>先泡软狠狠剪空挫薄</strong>（或前3天用尿素软膏封包除厚甲），再涂阿莫罗芬+周边涂咪康唑。
+            </div>
+          </div>
+        </div>
+
+        <!-- 重度卡 -->
+        <div class="flex gap-3 bg-rose-50 p-3 rounded-xl border border-rose-200 items-center">
+          <svg class="w-16 h-20 shrink-0" viewBox="0 0 60 75">
+            <rect x="8" y="8" width="44" height="58" rx="10" fill="#A16207" stroke="#713F12" stroke-width="2.5"/>
+            <path d="M12 18 L48 22 M10 35 L50 32 M14 50 L46 54" stroke="#451A03" stroke-width="2"/>
+            <rect x="10" y="54" width="40" height="10" rx="4" fill="#E11D48" opacity="0.5"/>
+          </svg>
+          <div class="text-xs space-y-1">
+            <div class="font-bold text-rose-900">🔴 重度/全甲毁损（面积＞75%，已吞噬月牙甲根）</div>
+            <div class="text-[11px] text-slate-600 leading-relaxed">
+              <strong>视觉特征：</strong>整片指甲焦黄灰黑、像老树皮一样巨厚（＞2mm），连最根部的月牙都已经被感染。<br/>
+              <strong>核心方案：</strong>单涂外用药很难透入甲母质，强烈建议去医院查肝功后<strong>联合口服特比萘芬/伊曲康唑</strong>+外涂阿莫罗芬。
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ================= Tab 3: 照片对比相册 ================= -->
+    <section id="tab-gallery" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <div class="flex justify-between items-center mb-2">
+          <h2 class="font-bold text-slate-800 text-base">🔍 前后康复对比器</h2>
+          <select id="galleryFilterDigit" onchange="renderPhotos()" class="text-xs bg-slate-100 border border-slate-200 rounded-lg px-2 py-1 font-semibold text-teal-800">
+            <option value="ALL">全部部位对比</option>
+          </select>
+        </div>
+        <p class="text-xs text-slate-500 mb-3">自动并排展示最早一张与最新一张，直观查看新甲推进线</p>
+        <div id="compareArea" class="grid grid-cols-2 gap-2.5">
+          <div class="bg-slate-50 rounded-xl p-2 text-center border border-dashed border-slate-300">
+            <div class="text-[11px] font-bold text-slate-500 mb-1">🕒 初始状态 (第一张)</div>
+            <div id="firstPhotoBox" class="h-36 flex items-center justify-center text-xs text-slate-400">暂无照片</div>
+          </div>
+          <div class="bg-slate-50 rounded-xl p-2 text-center border border-dashed border-teal-300">
+            <div class="text-[11px] font-bold text-teal-600 mb-1">✨ 最新状态 (最近一张)</div>
+            <div id="latestPhotoBox" class="h-36 flex items-center justify-center text-xs text-slate-400">暂无照片</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <h2 class="font-bold text-slate-800 text-base mb-3">📂 全部病甲影像时间轴</h2>
+        <div id="allPhotosTimeline" class="space-y-3"></div>
+      </div>
+    </section>
+
+    <!-- ================= Tab 4: 泡脚与用药百科 ================= -->
+    <section id="tab-guide" class="hidden space-y-4">
+
+      <!-- 怎么泡脚专题 -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-2.5">
+        <h2 class="font-bold text-slate-800 text-base">♨️ 灰指甲怎么泡脚最科学？</h2>
+        <div class="text-xs text-slate-600 space-y-2 leading-relaxed">
+          <div class="p-3 bg-sky-50 text-sky-900 rounded-xl border border-sky-100">
+            <strong>1. 日常涂药前泡脚（40℃温水 + 15分钟）：</strong><br/>
+            每周2次挫甲前，用40℃左右温水泡10~15分钟。此时的病甲吸饱水分会变软，不仅剪起来不崩裂，用砂条打磨时也不会扬起带真菌的粉尘。泡完后必须用<strong>一次性纸巾或吹风机冷风把趾缝彻底吹干</strong>！
+          </div>
+          <div class="p-3 bg-amber-50 text-amber-900 rounded-xl border border-amber-100">
+            <strong>2. 什么时候能用“足光散”泡脚？</strong><br/>
+            如果脚底死皮极厚、伴有脱屑型脚气，可以在治疗<strong>前3天</strong>连泡3次足光散剥脱死皮并泡软厚甲。⚠️ <strong>一旦脚趾缝有破皮、水疱、流血或刚剪破肉，绝对禁用足光散！</strong>
+          </div>
+          <div class="p-3 bg-purple-50 text-purple-900 rounded-xl border border-purple-100">
+            <strong>3. 巨厚老灰指甲“尿素封包除甲法”：</strong><br/>
+            如果病甲厚如石头挫不动，前3~5晚洗完脚后，在病甲上厚敷一层尿素软膏（40%浓度最佳，或厚敷尿素维E），用<strong>保鲜膜/防水创可贴严密包裹过夜</strong>，次日坏甲会像豆腐渣一样变软，轻松刮除后再涂阿莫罗芬。
+          </div>
+        </div>
+      </div>
+
+      <!-- 三药使用总表 -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-2.5">
+        <h2 class="font-bold text-slate-800 text-base">💊 手头三样药标准配合表</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700">
+                <th class="p-2 rounded-tl-lg">药物</th>
+                <th class="p-2">涂抹位置</th>
+                <th class="p-2 rounded-tr-lg">频率与铁律</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-[11px]">
+              <tr>
+                <td class="p-2 font-bold text-amber-700">阿莫罗芬搽剂</td>
+                <td class="p-2">仅限<strong>病甲甲板</strong>及前端甲缝</td>
+                <td class="p-2"><strong>每周2次</strong>。挫薄+酒精擦净后涂，干透成防水膜，管3~4天。</td>
+              </tr>
+              <tr>
+                <td class="p-2 font-bold text-teal-700">硝酸咪康唑</td>
+                <td class="p-2"><strong>甲周皮肤、脚趾缝、脚底</strong></td>
+                <td class="p-2"><strong>每天早晚各1次</strong>。绝不可涂到甲面药膜上！不痒后继续涂满4周。</td>
+              </tr>
+              <tr>
+                <td class="p-2 font-bold text-blue-700">尿素维E软膏</td>
+                <td class="p-2"><strong>脚后跟、足底干裂老茧处</strong></td>
+                <td class="p-2"><strong>每晚睡前1次</strong>。与咪康唑错开15分钟，保湿防裂断绝真菌温床。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 最近打卡历史 -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <h2 class="font-bold text-slate-800 text-base mb-3">📅 最近打卡记录</h2>
+        <div id="historyList" class="space-y-2 text-xs"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 手机日历闹钟生成弹窗 -->
+  <div id="reminderModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-xl">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-base text-slate-800">🔔 导出手机日历提醒</h3>
+        <button onclick="closeReminderModal()" class="text-slate-400 text-lg font-bold">✕</button>
+      </div>
+      <p class="text-xs text-slate-600 leading-relaxed">
+        点击下方按钮生成<strong>系统日历提醒文件 (.ics)</strong>，每日提醒持续 90 天，每周提醒共 48 次。请在分享菜单中保存文件或交给支持 .ics 的日历应用导入；是否弹窗取决于日历应用的通知设置。
+      </p>
+      <div class="space-y-2.5 text-xs">
+        <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl">
+          <span>☀️ 每日早间涂咪康唑</span>
+          <input type="time" id="timeMorning" value="08:30" class="bg-white border rounded px-2 py-1 font-bold text-teal-700" />
+        </div>
+        <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl">
+          <span>🌙 每日晚间洗脚+咪康唑+尿素</span>
+          <input type="time" id="timeEvening" value="21:30" class="bg-white border rounded px-2 py-1 font-bold text-teal-700" />
+        </div>
+        <div class="flex items-center justify-between bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+          <span>🛠️ 每周三/周日泡脚挫甲+阿莫罗芬</span>
+          <input type="time" id="timeWeekly" value="20:30" class="bg-white border rounded px-2 py-1 font-bold text-amber-700" />
+        </div>
+      </div>
+      <button onclick="downloadICS()" class="w-full bg-teal-600 active:bg-teal-700 text-white font-bold py-3 rounded-xl text-sm shadow">
+        📥 生成并分享日历文件
+      </button>
+    </div>
+  </div>
+
+  <!-- 底部4栏导航栏 -->
+  <nav class="fixed bottom-0 inset-x-0 max-w-[430px] mx-auto bg-white border-t border-slate-200 flex justify-around py-2 safe-bottom z-40">
+    <button onclick="switchTab('today')" id="nav-today" class="flex flex-col items-center text-teal-600 font-bold text-[11px] py-1 px-2">
+      <span class="text-base">✅</span>
+      <span>今日打卡</span>
+    </button>
+    <button onclick="switchTab('map')" id="nav-map" class="flex flex-col items-center text-slate-400 font-medium text-[11px] py-1 px-2">
+      <span class="text-base">🦶</span>
+      <span>病甲图谱</span>
+    </button>
+    <button onclick="switchTab('gallery')" id="nav-gallery" class="flex flex-col items-center text-slate-400 font-medium text-[11px] py-1 px-2">
+      <span class="text-base">📸</span>
+      <span>对比相册</span>
+    </button>
+    <button onclick="switchTab('guide')" id="nav-guide" class="flex flex-col items-center text-slate-400 font-medium text-[11px] py-1 px-2">
+      <span class="text-base">📖</span>
+      <span>泡脚与用药</span>
+    </button>
+  </nav>
+</div>
+
+<script>
+  // --- 1. 基础日期与常量 ---
+  const getTodayKey = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const todayKey = getTodayKey();
+  const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const now = new Date();
+  document.getElementById('currentDateStr').innerText = `${todayKey} (${weekDays[now.getDay()]})`;
+
+  if (now.getDay() === 3 || now.getDay() === 0) {
+    const badge = document.getElementById('amorolfineBadge');
+    badge.innerText = '🔥 今天是阿莫罗芬破甲日！';
+    badge.className = 'text-xs font-bold text-rose-600 animate-pulse';
+  }
+
+  // 20个指/趾甲字典
+  const DIGIT_NAMES = {
+    LF1: '左脚大拇趾', LF2: '左脚二趾', LF3: '左脚中趾', LF4: '左脚四趾', LF5: '左脚小趾',
+    RF1: '右脚大拇趾', RF2: '右脚二趾', RF3: '右脚中趾', RF4: '右脚四趾', RF5: '右脚小趾',
+    LH1: '左手大拇指', LH2: '左手食指', LH3: '左手中指', LH4: '左手无名指', LH5: '左手小指',
+    RH1: '右手大拇指', RH2: '右手食指', RH3: '右手中指', RH4: '右手无名指', RH5: '右手小指'
+  };
+
+  const SEVERITY_META = [
+    { level: 0, label: '健康', fill: '#D1FAE5', stroke: '#10B981', badge: 'bg-emerald-100 text-emerald-800' },
+    { level: 1, label: '轻度 (≤25%)', fill: '#FDE047', stroke: '#CA8A04', badge: 'bg-amber-100 text-amber-800', tip: '每周2次泡软挫薄+阿莫罗芬，未伤及月牙，外涂即可断根。' },
+    { level: 2, label: '中度 (25~75%)', fill: '#FB923C', stroke: '#C2410C', badge: 'bg-orange-100 text-orange-800', tip: '增厚明显，务必先泡软剪空挫薄（或前3晚尿素封包）再涂阿莫罗芬+周边涂咪康唑。' },
+    { level: 3, label: '重度 (全甲/伤及月牙)', fill: '#F43F5E', stroke: '#9F1239', badge: 'bg-rose-100 text-rose-800', tip: '已侵犯甲根月牙或巨厚(>2mm)，建议去医院皮肤科配口服特比萘芬+外用阿莫罗芬联合冲击。' }
+  ];
+
+  // --- 2. 4阶段手动进度尺管理 ---
+  const STAGE_CONFIG = {
+    1: {
+      title: '🌱 阶段1：破冰期（第 1~4 周）',
+      desc: '对照标准：指甲最根部（月牙处）长出 1~2mm 粉嫩平整的新甲，说明真菌向根部蔓延已被成功阻断！',
+      svg: `<svg class="w-12 h-14" viewBox="0 0 60 70"><rect x="10" y="8" width="40" height="54" rx="10" fill="#FDE047" stroke="#CA8A04" stroke-width="2"/><path d="M12 52 Q30 45 48 52 L48 58 C48 60 12 60 12 58 Z" fill="#FDA4AF"/><line x1="8" y1="50" x2="52" y2="50" stroke="#E11D48" stroke-width="2" stroke-dasharray="3 2"/></svg>`
+    },
+    2: {
+      title: '🚀 阶段2：推进期（第 2~3 个月）',
+      desc: '对照标准：粉嫩新甲与黄厚病甲的分界线稳步往前推进了 1/3~1/2，前端坏甲随着修剪越来越短。',
+      svg: `<svg class="w-12 h-14" viewBox="0 0 60 70"><rect x="10" y="8" width="40" height="54" rx="10" fill="#FDE047" stroke="#CA8A04" stroke-width="2"/><rect x="11" y="34" width="38" height="27" rx="8" fill="#FECDD3"/><line x1="8" y1="34" x2="52" y2="34" stroke="#E11D48" stroke-width="2" stroke-dasharray="3 2"/></svg>`
+    },
+    3: {
+      title: '🔥 阶段3：决胜期（第 4~5 个月）',
+      desc: '对照标准：健康指甲已占领 3/4 以上面积，只剩最前端一窄条残余坏甲，切勿松懈停药！',
+      svg: `<svg class="w-12 h-14" viewBox="0 0 60 70"><rect x="10" y="8" width="40" height="54" rx="10" fill="#FECDD3" stroke="#0D9488" stroke-width="2"/><path d="M10 18 C10 8 50 8 50 18 L50 22 L10 22 Z" fill="#FDE047"/><line x1="8" y1="22" x2="52" y2="22" stroke="#E11D48" stroke-width="2" stroke-dasharray="3 2"/></svg>`
+    },
+    4: {
+      title: '🏆 阶段4：完全上岸（手指4~6月 / 脚趾6~12月）',
+      desc: '对照标准：坏甲被彻底剪光，整片指甲恢复粉嫩透明光泽！建议再巩固涂药 2~4 周防残留孢子复发。',
+      svg: `<svg class="w-12 h-14" viewBox="0 0 60 70"><rect x="10" y="8" width="40" height="54" rx="10" fill="#FECDD3" stroke="#0D9488" stroke-width="2.5"/><path d="M16 18 Q30 14 44 18" stroke="#FFF" stroke-width="2.5" fill="none"/></svg>`
+    }
+  };
+
+  function setStage(stageNum) {
+    localStorage.setItem('nail_current_stage', stageNum);
+    renderStageSelector();
+  }
+
+  function renderStageSelector() {
+    const current = parseInt(localStorage.getItem('nail_current_stage') || '1', 10);
+    [1, 2, 3, 4].forEach(n => {
+      const btn = document.getElementById(`stage-btn-${n}`);
+      if (n === current) {
+        btn.className = 'p-2 rounded-xl border border-teal-600 bg-teal-600 text-white text-[11px] shadow-sm transition-all';
+      } else {
+        btn.className = 'p-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-[11px] transition-all';
+      }
+    });
+    const info = STAGE_CONFIG[current];
+    document.getElementById('stageSvgBox').innerHTML = info.svg;
+    document.getElementById('stageTitle').innerText = info.title;
+    document.getElementById('stageDesc').innerText = info.desc;
+  }
+
+  // --- 3. 20指(趾)病甲图谱状态管理 ---
+  function getNailMap() {
+    const saved = localStorage.getItem('nail_severity_map');
+    if (saved) return JSON.parse(saved);
+    // 默认示例：右脚大拇趾中度，方便初次打开理解
+    return { RF1: 2 };
+  }
+
+  function saveNailMap(map) {
+    localStorage.setItem('nail_severity_map', JSON.stringify(map));
+    renderNailMap();
+    updateDashboard();
+  }
+
+  function cycleDigitState(code) {
+    const map = getNailMap();
+    const current = map[code] || 0;
+    const next = (current + 1) % 4;
+    if (next === 0) {
+      delete map[code];
+    } else {
+      map[code] = next;
+    }
+    saveNailMap(map);
+  }
+
+  function switchBodyPart(part) {
+    document.getElementById('svg-feet-box').classList.toggle('hidden', part !== 'feet');
+    document.getElementById('svg-hands-box').classList.toggle('hidden', part !== 'hands');
+    document.getElementById('btn-part-feet').className = part === 'feet'
+      ? 'px-2.5 py-1 rounded-md bg-teal-600 text-white font-bold'
+      : 'px-2.5 py-1 rounded-md text-slate-600 font-medium';
+    document.getElementById('btn-part-hands').className = part === 'hands'
+      ? 'px-2.5 py-1 rounded-md bg-teal-600 text-white font-bold'
+      : 'px-2.5 py-1 rounded-md text-slate-600 font-medium';
+  }
+
+  function renderNailMap() {
+    const map = getNailMap();
+    Object.keys(DIGIT_NAMES).forEach(code => {
+      const group = document.getElementById(`node-${code}`);
+      if (!group) return;
+      const rect = group.querySelector('rect');
+      const level = map[code] || 0;
+      const meta = SEVERITY_META[level];
+      rect.setAttribute('fill', meta.fill);
+      rect.setAttribute('stroke', meta.stroke);
+    });
+
+    // 渲染下方已标记的病甲清单与针对性用药提示
+    const activeCodes = Object.keys(map).filter(k => map[k] > 0);
+    const summaryEl = document.getElementById('markedNailsSummary');
+    if (activeCodes.length === 0) {
+      summaryEl.innerHTML = `<div class="text-xs text-slate-400 text-center py-2">暂未标记病甲，请点击上方脚趾或手指设置轻/中/重度</div>`;
+    } else {
+      summaryEl.innerHTML = activeCodes.map(code => {
+        const lv = map[code];
+        const meta = SEVERITY_META[lv];
+        const isFoot = code.startsWith('LF') || code.startsWith('RF');
+        return `
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-slate-800">📍 ${DIGIT_NAMES[code]} <span class="text-[10px] font-normal text-slate-400">(${isFoot ? '换甲周期6~12月' : '换甲周期3~6月'})</span></span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${meta.badge}">${meta.label}</span>
+            </div>
+            <div class="text-[11px] text-slate-600 leading-relaxed">${meta.tip}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 同步更新拍照部位下拉框 & 相册筛选框
+    const photoSelect = document.getElementById('photoDigitSelect');
+    const filterSelect = document.getElementById('galleryFilterDigit');
+    const optionsHtml = activeCodes.map(c => `<option value="${DIGIT_NAMES[c]}">📍 ${DIGIT_NAMES[c]}</option>`).join('');
+    photoSelect.innerHTML = optionsHtml + `<option value="全部/其他部位">📍 全部/其他部位</option>`;
+    filterSelect.innerHTML = `<option value="ALL">全部部位对比</option>` + activeCodes.map(c => `<option value="${DIGIT_NAMES[c]}">只看：${DIGIT_NAMES[c]}</option>`).join('');
+  }
+
+  // --- 4. 每日打卡记录管理 ---
+  function getLogs() {
+    return JSON.parse(localStorage.getItem('nail_care_logs') || '{}');
+  }
+
+  function saveLogs(logs) {
+    localStorage.setItem('nail_care_logs', JSON.stringify(logs));
+    updateDashboard();
+  }
+
+  function toggleTask(taskKey) {
+    const logs = getLogs();
+    if (!logs[todayKey]) logs[todayKey] = {};
+    const checkbox = document.getElementById(
+      taskKey === 'amorolfine' ? 'chk-amorolfine' :
+      taskKey === 'miconazole_am' ? 'chk-miconazole-am' :
+      taskKey === 'miconazole_pm' ? 'chk-miconazole-pm' : 'chk-urea-pm'
+    );
+    logs[todayKey][taskKey] = checkbox.checked;
+    saveLogs(logs);
+  }
+
+  function loadTodayChecks() {
+    const logs = getLogs();
+    const todayData = logs[todayKey] || {};
+    document.getElementById('chk-amorolfine').checked = !!todayData.amorolfine;
+    document.getElementById('chk-miconazole-am').checked = !!todayData.miconazole_am;
+    document.getElementById('chk-miconazole-pm').checked = !!todayData.miconazole_pm;
+    document.getElementById('chk-urea-pm').checked = !!todayData.urea_pm;
+  }
+
+  // --- 5. IndexedDB 照片存储与按部位对比 ---
+  let db;
+  const req = indexedDB.open('NailCareDB', 1);
+  req.onupgradeneeded = (e) => {
+    db = e.target.result;
+    if (!db.objectStoreNames.contains('photos')) {
+      db.createObjectStore('photos', { keyPath: 'id', autoIncrement: true });
+    }
+  };
+  req.onerror = () => alert('无法打开照片数据库，请检查应用存储空间。');
+  req.onsuccess = (e) => {
+    db = e.target.result;
+    renderPhotos();
+  };
+
+  async function pickPhoto(source) {
+    if (!db) { alert('照片数据库尚未准备好，请稍后再试。'); return; }
+    if (!window.NailNative.isNative()) {
+      const input = document.getElementById('photoFile');
+      if (source === 'camera') input.setAttribute('capture', 'environment');
+      else input.removeAttribute('capture');
+      input.click();
+      return;
+    }
+    try {
+      const file = await window.NailNative.pickPhoto(source);
+      if (file) handlePhotoUpload({ target: { files: [file], value: '' } });
+    } catch (error) {
+      if (!/cancel|取消|OS-PLUG-CAMR-0010/i.test(error.message || '')) alert('无法获取照片：' + error.message);
+    }
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
+  }
+
+  function handlePhotoUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (!db) { alert('照片数据库尚未准备好，请稍后再试。'); return; }
+    const reader = new FileReader();
+    reader.onerror = () => alert('照片读取失败，请重新选择。');
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => alert('无法识别这张图片，请选择 JPEG 或 PNG。');
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 900;
+        const scale = Math.min(1, MAX_WIDTH / img.width);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+        const noteInput = document.getElementById('photoNote');
+        const digitPart = document.getElementById('photoDigitSelect').value || '常规部位';
+        const record = {
+          date: todayKey,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          digit: digitPart,
+          note: noteInput.value.trim() || '病甲推进打卡',
+          dataUrl
+        };
+
+        const tx = db.transaction('photos', 'readwrite');
+        tx.objectStore('photos').add(record);
+        tx.onerror = () => alert('照片未能保存，请检查手机剩余空间。');
+        tx.oncomplete = () => {
+          noteInput.value = '';
+          event.target.value = '';
+          renderPhotos();
+        };
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function deletePhoto(id) {
+    if (!confirm('确定删除这张病甲记录照片吗？')) return;
+    const tx = db.transaction('photos', 'readwrite');
+    tx.objectStore('photos').delete(id);
+    tx.oncomplete = () => renderPhotos();
+  }
+
+  function renderPhotos() {
+    if (!db) return;
+    const tx = db.transaction('photos', 'readonly');
+    const store = tx.objectStore('photos');
+    const getAll = store.getAll();
+
+    getAll.onsuccess = () => {
+      const allPhotos = getAll.result || [];
+      document.getElementById('statPhotos').innerText = allPhotos.length;
+
+      // 今日已拍预览
+      const todayContainer = document.getElementById('todayPhotosContainer');
+      const todayPhotos = allPhotos.filter(p => p.date === todayKey);
+      todayContainer.innerHTML = todayPhotos.map(p => `
+        <div class="relative rounded-xl overflow-hidden border border-slate-200">
+          <img src="${p.dataUrl}" class="w-full h-20 object-cover" />
+          <div class="bg-black/65 text-white text-[9px] px-1.5 py-0.5 truncate">${p.digit || ''} ${escapeHtml(p.note)}</div>
+        </div>
+      `).join('');
+
+      // 部位过滤后的对比相册
+      const filterDigit = document.getElementById('galleryFilterDigit').value;
+      const photos = filterDigit === 'ALL' ? allPhotos : allPhotos.filter(p => p.digit === filterDigit);
+
+      const firstBox = document.getElementById('firstPhotoBox');
+      const latestBox = document.getElementById('latestPhotoBox');
+      if (photos.length > 0) {
+        const first = photos[0];
+        const latest = photos[photos.length - 1];
+        firstBox.innerHTML = `<div class="w-full"><img src="${first.dataUrl}" class="w-full h-28 object-cover rounded-lg mb-1"/><div class="text-[10px] text-slate-600 truncate">${first.date} · ${first.digit || ''}</div></div>`;
+        latestBox.innerHTML = `<div class="w-full"><img src="${latest.dataUrl}" class="w-full h-28 object-cover rounded-lg mb-1"/><div class="text-[10px] text-teal-700 font-bold truncate">${latest.date} · ${latest.digit || ''}</div></div>`;
+      } else {
+        firstBox.innerHTML = '该部位暂无照片';
+        latestBox.innerHTML = '该部位暂无照片';
+      }
+
+      const timeline = document.getElementById('allPhotosTimeline');
+      if (photos.length === 0) {
+        timeline.innerHTML = '<div class="text-xs text-slate-400 text-center py-6">还没有对应照片，快去【今日打卡】拍一张留底吧！</div>';
+      } else {
+        timeline.innerHTML = photos.slice().reverse().map(p => `
+          <div class="flex gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 items-center">
+            <img src="${p.dataUrl}" class="w-20 h-20 object-cover rounded-lg shrink-0 border" />
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="bg-teal-100 text-teal-800 text-[10px] font-bold px-2 py-0.5 rounded">${p.digit || '病甲'}</span>
+                <span class="text-xs font-bold text-slate-800">${p.date}</span>
+              </div>
+              <div class="text-xs text-slate-600 mt-1 break-words">${escapeHtml(p.note)}</div>
+            </div>
+            <button onclick="deletePhoto(${p.id})" class="text-slate-400 hover:text-rose-500 text-xs px-2 py-1">删除</button>
+          </div>
+        `).join('');
+      }
+    };
+  }
+
+  // --- 6. 数据统计与面板刷新 ---
+  function updateDashboard() {
+    const logs = getLogs();
+    const dates = Object.keys(logs).sort().reverse();
+    let activeDays = 0;
+    let amorolfineCount = 0;
+
+    dates.forEach(d => {
+      const item = logs[d];
+      if (item.amorolfine || item.miconazole_am || item.miconazole_pm || item.urea_pm) {
+        activeDays++;
+      }
+      if (item.amorolfine) amorolfineCount++;
+    });
+
+    const nailMap = getNailMap();
+    const nailCount = Object.keys(nailMap).filter(k => nailMap[k] > 0).length;
+
+    document.getElementById('statNails').innerText = nailCount;
+    document.getElementById('statDays').innerText = activeDays;
+    document.getElementById('statAmorolfine').innerText = amorolfineCount;
+
+    const pct = Math.min(100, Math.round((activeDays / 180) * 100));
+    document.getElementById('cyclePercent').innerText = `打卡 ${activeDays}/180天 (${pct}%)`;
+    document.getElementById('cycleBar').style.width = `${pct}%`;
+
+    const historyList = document.getElementById('historyList');
+    if (dates.length === 0) {
+      historyList.innerHTML = '<div class="text-slate-400 text-center py-4">暂无打卡记录</div>';
+    } else {
+      historyList.innerHTML = dates.slice(0, 30).map(d => {
+        const item = logs[d];
+        const tags = [];
+        if (item.amorolfine) tags.push('<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold">阿莫罗芬</span>');
+        if (item.miconazole_am) tags.push('<span class="bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded">早咪康唑</span>');
+        if (item.miconazole_pm) tags.push('<span class="bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded">晚咪康唑</span>');
+        if (item.urea_pm) tags.push('<span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">晚尿素维E</span>');
+        return `
+          <div class="flex justify-between items-center bg-slate-50 px-3 py-2.5 rounded-xl border border-slate-100">
+            <span class="font-bold text-slate-700">${d}</span>
+            <div class="flex flex-wrap gap-1 justify-end">${tags.join('') || '<span class="text-slate-400">未完成</span>'}</div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  function switchTab(tab) {
+    ['today', 'map', 'gallery', 'guide'].forEach(t => {
+      document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== tab);
+      const nav = document.getElementById(`nav-${t}`);
+      if (t === tab) {
+        nav.className = 'flex flex-col items-center text-teal-600 font-bold text-[11px] py-1 px-2';
+      } else {
+        nav.className = 'flex flex-col items-center text-slate-400 font-medium text-[11px] py-1 px-2';
+      }
+    });
+  }
+
+  // --- 7. 日历闹钟导出 (.ics) ---
+  function openReminderModal() { document.getElementById('reminderModal').classList.remove('hidden'); }
+  function closeReminderModal() { document.getElementById('reminderModal').classList.add('hidden'); }
+
+  async function downloadICS() {
+    const am = document.getElementById('timeMorning').value.replace(':', '') + '00';
+    const pm = document.getElementById('timeEvening').value.replace(':', '') + '00';
+    const wk = document.getElementById('timeWeekly').value.replace(':', '') + '00';
+    const dateStr = todayKey.replace(/-/g, '');
+
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//NailCareHelperPro//CN',
+      'BEGIN:VEVENT',
+      `UID:${crypto.randomUUID()}@nailcare.local`,
+      `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}`,
+      `DTSTART:${dateStr}T${am}`,
+      'RRULE:FREQ=DAILY;COUNT=90',
+      'SUMMARY:☀️ 涂硝酸咪康唑（脚趾缝+甲周皮肤）',
+      'DESCRIPTION:注意只涂皮肤，避开涂了阿莫罗芬的指甲板！',
+      'BEGIN:VALARM',
+      'TRIGGER:-PT0M',
+      'ACTION:DISPLAY',
+      'DESCRIPTION:护甲提醒',
+      'END:VALARM',
+      'END:VEVENT',
+      'BEGIN:VEVENT',
+      `UID:${crypto.randomUUID()}@nailcare.local`,
+      `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}`,
+      `DTSTART:${dateStr}T${pm}`,
+      'RRULE:FREQ=DAILY;COUNT=90',
+      'SUMMARY:🌙 洗脚吹干 + 涂咪康唑 & 尿素维E软膏',
+      'DESCRIPTION:洗完澡彻底吹干趾缝，涂完咪康唑15分钟后再涂尿素维E于脚后跟。',
+      'BEGIN:VALARM',
+      'TRIGGER:-PT0M',
+      'ACTION:DISPLAY',
+      'DESCRIPTION:护甲提醒',
+      'END:VALARM',
+      'END:VEVENT',
+      'BEGIN:VEVENT',
+      `UID:${crypto.randomUUID()}@nailcare.local`,
+      `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}`,
+      `DTSTART:${dateStr}T${wk}`,
+      'RRULE:FREQ=WEEKLY;BYDAY=WE,SU;COUNT=48',
+      'SUMMARY:🛠️ 40℃泡脚15分钟 + 挫薄病甲 + 涂阿莫罗芬 + 拍照',
+      'DESCRIPTION:1.泡软 2.砂条挫薄病甲(用完即扔) 3.酒精棉片脱脂 4.涂阿莫罗芬并拍照记录！',
+      'BEGIN:VALARM',
+      'TRIGGER:-PT0M',
+      'ACTION:DISPLAY',
+      'DESCRIPTION:深度护甲提醒',
+      'END:VALARM',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+
+    try {
+      await window.NailNative.exportCalendar(icsContent);
+      closeReminderModal();
+    } catch (error) { alert('日历文件导出失败：' + error.message); }
+
+  }
+
+  // 初始化运行
+  renderStageSelector();
+  renderNailMap();
+  loadTodayChecks();
+  updateDashboard();
+</script>
+</body>
+</html>
