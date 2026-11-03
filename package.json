@@ -1,7 +1,7 @@
 {
   "name": "nail-apk",
-  "version": "1.0.0",
-  "description": "护甲上岸助手 Android",
+  "version": "1.0.1",
+  "description": "\u62a4\u7532\u4e0a\u5cb8\u52a9\u624b Android",
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "playwright test"
